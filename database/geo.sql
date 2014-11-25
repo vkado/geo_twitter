@@ -47,13 +47,13 @@ DROP TABLE IF EXISTS `search`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `search` (
   `id_search` int(11) NOT NULL AUTO_INCREMENT,
-  `search` text,
+  `search` longtext,
   `place` varchar(255) DEFAULT NULL,
   `date_added` datetime DEFAULT NULL,
   `date_modified` datetime DEFAULT NULL,
   PRIMARY KEY (`id_search`),
   KEY `place` (`place`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
