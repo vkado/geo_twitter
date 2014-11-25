@@ -1,5 +1,9 @@
 <?php
 date_default_timezone_set('Asia/Bangkok');
+
+@ini_set('memory_limit', '-1');
+@ini_set('max_execution_time', 3000);
+
 /*
  *---------------------------------------------------------------
  * APPLICATION ENVIRONMENT

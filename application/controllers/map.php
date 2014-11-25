@@ -26,8 +26,7 @@ class Map extends MY_Controller {
         $lat = $this->input->post('lat') ? $this->input->post('lat') : '13.7278956';
         $long = $this->input->post('long') ? $this->input->post('long') : '100.52412349999997';
         $place = $this->input->post('place') ? $this->input->post('place') : '';
-        $marker = ($place != '')? true : false;
-        if($marker){
+        if($place != ''){
             $data = array(
                 'cookie' => $this->input->cookie('user'),
                 'lat' =>  $lat,
@@ -37,7 +36,7 @@ class Map extends MY_Controller {
             $this->Map_model->addHistory($data);
         }
 
-        $this->data['map'] = $this->mapSearch($lat, $long, $marker);
+        $this->data['map'] = $this->mapSearch($lat, $long, $place);
         $this->data['lat'] = $lat;
         $this->data['long'] = $long;
         $this->data['place'] = $place;
@@ -63,10 +62,10 @@ class Map extends MY_Controller {
      * @access    private
      * @param    $lat string latitude
      * @param    $long string longtitude
-     * @param    $markers bool TRUE for set marker
+     * @param    $place string name of city
      * @return map object
      */
-    private function mapSearch($lat, $long, $markers){
+    private function mapSearch($lat, $long, $place){
 
         $config['center'] = $lat.','.$long;
         $config['zoom'] = '11';
@@ -76,14 +75,14 @@ class Map extends MY_Controller {
         $config['placesAutocompleteOnChange'] = '
         var geocoder = new google.maps.Geocoder();
         var address = document.getElementById("myPlaceTextBox").value;
+
         geocoder.geocode({ "address": address }, function (results, status) {
             if (status == google.maps.GeocoderStatus.OK) {
                 $("#myPlaceTextBox").parent().removeClass("has-error");
                 var latitude = results[0].geometry.location.lat();
                 var longitude = results[0].geometry.location.lng();
-                var placeText = $("#myPlaceTextBox").val();
 
-                post("'.site_url().'", { lat: latitude, long: longitude, place: placeText });
+                post("'.site_url().'", { lat: latitude, long: longitude, place: address });
             } else {
                 alert("Request failed.");
                 $("#myPlaceTextBox").parent().addClass("has-error");
@@ -92,9 +91,9 @@ class Map extends MY_Controller {
         ';
         $this->googlemaps->initialize($config);
 
-        if($markers){
+        if($place != ''){
 
-            $tweet_area = $this->tweetGeo($lat, $long, '50km');
+            $tweet_area = $this->tweetGeo($lat, $long, '50km', $place);
 
             foreach($tweet_area as $f){
                 $marker = array();
@@ -119,24 +118,40 @@ class Map extends MY_Controller {
      * @param    $lat string latitude
      * @param    $long string longtitude
      * @param    $radius number radius of area
+     * @param    $place string name of city
      * @return tweet object
      */
-    private function tweetGeo($lat, $long, $radius){
-        $this->config->load('twitter', TRUE);
-        $config_twitter = $this->config->item('twitter');
+    private function tweetGeo($lat, $long, $radius, $place){
+        $this->load->model('Search_model');
 
-        $this->load->library('twitterapiexchange', $config_twitter);
+        //check search result on DB
+        $log = $this->Search_model->getSearchOneHour($place);
+        if($log){
+            $res = json_decode($log->search);
+        }else{
+            $this->config->load('twitter', TRUE);
+            $config_twitter = $this->config->item('twitter');
 
-        $url = 'https://api.twitter.com/1.1/search/tweets.json';
-        $requestMethod = 'GET';
+            $this->load->library('twitterapiexchange', $config_twitter);
 
-        $getfield = '?q=test&geocode='.$lat.','.$long.','.$radius.'&count=100';
+            $url = 'https://api.twitter.com/1.1/search/tweets.json';
+            $requestMethod = 'GET';
 
-        $response = $this->twitterapiexchange->setGetfield($getfield)
-            ->buildOauth($url, $requestMethod)
-            ->performRequest();
+            $getfield = '?q='.urlencode($place).'&geocode='.$lat.','.$long.','.$radius.'&count=100';
 
-        $res = json_decode($response);
+            $response = $this->twitterapiexchange->setGetfield($getfield)
+                ->buildOauth($url, $requestMethod)
+                ->performRequest();
+
+            $data = array(
+                'search'=>$response,
+                'place'=>$place
+            );
+            $this->Search_model->addSearch($data);
+
+            $res = json_decode($response);
+        }
+
 
         return (!empty($res->statuses))?$res->statuses:array();
     }
